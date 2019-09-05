@@ -16,7 +16,7 @@ url="https://github.com/frank-w/BPI-R2-4.14"
 license=('GPL2')
 makedepends=('xmlto' 'docbook-xsl' 'kmod' 'inetutils' 'bc' 'git')
 options=('!strip')
-source=("BPI-R2-4.14-${_commit}.tar.gz"
+source=("https://github.com/frank-w/BPI-R2-4.14/archive/${_commit}.tar.gz"
         'config'
         'linux.preset'
         'bpi-r2-sd-boot1m.img'
