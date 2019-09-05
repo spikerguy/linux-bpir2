@@ -11,7 +11,7 @@ _kernelname=${pkgbase#linux}
 _desc="Frank's Mediatek kernel 4.19.69-0 for BPI R2"
 pkgver=4.19.69
 pkgrel=0
-arch=('aarch64')
+arch=('armv7h')
 url="https://github.com/frank-w/BPI-R2-4.14"
 license=('GPL2')
 makedepends=('xmlto' 'docbook-xsl' 'kmod' 'inetutils' 'bc' 'git')
@@ -87,7 +87,7 @@ _package() {
 
   cd "${srcdir}/${_srcname}"
 
-  KARCH=arm64
+  KARCH=arm
   
   # get kernel version
   #_kernver="$pkgver-$pkgrel"
