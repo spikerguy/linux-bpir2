@@ -1,13 +1,14 @@
-# Amlogic
+# BananaPi R2 - Mediatek
 # Maintainer: Spikerguy <shareahack@hotmail.com>
+#Kernel Maintainer: Frank
 
 buildarch=8
 
 pkgbase=linux4-19-69-0-r2
 _commit=11c8a1bd2f229b114fff29ec7839422567651f39
-_srcname=Amlogic_s905-kernel-${_commit}
+_srcname=BPI-R2-4.14-${_commit}
 _kernelname=${pkgbase#linux}
-_desc="Amlogic kernel 4.19.69-0 for BPI R2"
+_desc="Frank's Mediatek kernel 4.19.69-0 for BPI R2"
 pkgver=4.19.69
 pkgrel=0
 arch=('aarch64')
@@ -18,11 +19,11 @@ options=('!strip')
 source=("BPI-R2-4.14-${_commit}.tar.gz"
         'config'
         'linux.preset'
-        'bpi-r2-sd-boot1m.img')
+        'bpi-r2-sd-boot1m.img'
+        '60-linux.hook'
+        '90-linux.hook'
+        '91-uInitrd.hook')
 md5sums=('SKIP'
-         'SKIP'
-         'SKIP'
-         'SKIP'
          'SKIP'
          'SKIP'
          'SKIP'
@@ -87,62 +88,63 @@ _package() {
   cd "${srcdir}/${_srcname}"
 
   KARCH=arm64
-  KSUBARCH=arm
-
+  
   # get kernel version
-  _kernver="$pkgver-$pkgrel"
-#  "$(make kernelrelease)"
+  #_kernver="$pkgver-$pkgrel"
+  _kernver= "$(make kernelrelease)"
   _basekernel=${_kernver%%-*}
   _basekernel=${_basekernel%.*}
 
-  mkdir -p "${pkgdir}"/{lib/modules,lib/firmware,boot/dtb}
-  make INSTALL_MOD_PATH="${pkgdir}" modules_install
-  cp arch/$KARCH/boot/uImage "${pkgdir}/boot/uImage"
-  cp arch/$KARCH/boot/dts/amlogic/*.dtb "${pkgdir}/boot/dtb"
-
-  # set correct depmod command for install
-  sed \
-    -e  "s/KERNEL_NAME=.*/KERNEL_NAME=${_kernelname}/g" \
-    -e  "s/KERNEL_VERSION=.*/KERNEL_VERSION=${_kernver}/g" \
-    -i "${startdir}/${pkgname}.install"
-
-  # install mkinitcpio preset file for kernel
-  install -D -m644 "${srcdir}/linux.preset" "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
-  sed \
-    -e "1s|'linux.*'|'${pkgbase}'|" \
-    -e "s|ALL_kver=.*|ALL_kver=\"${_kernver}\"|" \
-    -i "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
-
+  mkdir -p "${pkgdir}"/{boot,usr/lib/modules,lib/firmware}
+  make INSTALL_MOD_PATH="${pkgdir}/usr" modules_install
+  make INSTALL_DTBS_PATH="${pkgdir}/boot/dtbs" dtbs_install 
+  cp arch/$KARCH/boot/uImage "${pkgdir}/boot"
+  #cp arch/$KARCH/boot/dts/amlogic/*.dtb "${pkgdir}/boot/dtb"
+   
+  
+  # make room for external modules
+  local _extramodules="extramodules-${_basekernel}${_kernelname}"
+  ln -s "../${_extramodules}" "${pkgdir}/usr/lib/modules/${_kernver}/extramodules"
+  
+  # add real version for building modules and running depmod from post_install/upgrade
+  echo "${_kernver}" |
+  install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_extramodules}/version"
+  
   # remove build and source links
   rm -f "${pkgdir}"/lib/modules/${_kernver}/{source,build}
+ 
+  # Now we call depmod...
+  depmod -b "$pkgdir/usr" -F System.map "$_kernver"
+ 
+  # sed expression for following substitutions
+  local _subst="
+    s|%PKGBASE%|${pkgbase}|g
+    s|%KERNVER%|${_kernver}|g
+    s|%EXTRAMODULES%|${_extramodules}|g
+  "
+  #sed expression for 91-uInird.hook
+  sed "${_subst}" ../91-uInitrd.hook |
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/91-uInitrd.hook"
+
+
+  # install mkinitcpio preset file
+  sed "${_subst}" ../linux.preset |
+    install -Dm644 /dev/stdin "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
+    
+    
+ # install pacman hooks
+  sed "${_subst}" ../60-linux.hook |
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/60-${pkgbase}.hook"
+  sed "${_subst}" ../90-linux.hook |
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/90-${pkgbase}.hook"
+
   # remove the firmware
   rm -rf "${pkgdir}/lib/firmware"
   # gzip -9 all modules to save 100MB of space
   find "${pkgdir}" -name '*.ko' |xargs -P 2 -n 1 gzip -9
-  # make room for external modules
-  ln -s "../extramodules-${_basekernel}-${_kernelname:-ARCH}" "${pkgdir}/lib/modules/${_kernver}/extramodules"
-  # add real version for building modules and running depmod from post_install/upgrade
-  mkdir -p "${pkgdir}/lib/modules/extramodules-${_basekernel}-${_kernelname:-ARCH}"
-  echo "${_kernver}" > "${pkgdir}/lib/modules/extramodules-${_basekernel}-${_kernelname:-ARCH}/version"
-
-  # Now we call depmod...
-  depmod -b "$pkgdir" -F System.map "$_kernver"
-
-  # move module tree /lib -> /usr/lib
-  mkdir -p "${pkgdir}/usr"
-  mv "$pkgdir/lib" "$pkgdir/usr"
-
-  # add vmlinux
-  install -D -m644 vmlinux "${pkgdir}/usr/lib/modules/${_kernver}/build/vmlinux"
-
-  # install amlogic hdmi init script/service
-  install -Dm755 "${srcdir}/uEnv.ini" "${pkgdir}/boot/uEnv.ini"
-  install -Dm666 "${srcdir}/aml_autoscript" "${pkgdir}/boot/aml_autoscript"
-  install -Dm666 "${srcdir}/aml_autoscript.zip" "${pkgdir}/boot/aml_autoscript.zip"
-  install -Dm644 "${srcdir}/emmc_autoscript" "${pkgdir}/boot/emmc_autoscript"
-  install -Dm666 "${srcdir}/emmc_autoscript.cmd" "${pkgdir}/boot/emmc_autoscript.cmd"
-  install -Dm644 "${srcdir}/s905_autoscript" "${pkgdir}/boot/s905_autoscript"
-  install -Dm666 "${srcdir}/s905_autoscript.cmd" "${pkgdir}/boot/s905_autoscript.cmd"
+  
+  #Move BootSector image to boot
+   install -Dm755 "${srcdir}/bpi-r2-sd-boot1m.img" "${pkgdir}/boot/bpi-r2-sd-boot1m.img"
 
 }
 
