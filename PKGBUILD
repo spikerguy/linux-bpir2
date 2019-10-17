@@ -131,6 +131,8 @@ _package() {
     s|%EXTRAMODULES%|${_extramodules}|g
   "
   #sed expression for 91-uInird.hook
+  sed "${_subst}" ../91-uInitrd.hook |
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/91-uInitrd.hook"
   
   # install mkinitcpio preset file
   sed "${_subst}" ../linux.preset |
@@ -151,10 +153,7 @@ _package() {
   #Move BootSector image to boot
    mv "${srcdir}/bpi-r2-sd-boot1m-2019.img" "${pkgdir}/boot"
       
-       sed "${_subst}" ../91-uInitrd.hook |
-    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/91-uInitrd.hook"
-
-   }
+}
 
 _package-headers() {
   pkgdesc="Header files and scripts for building modules for linux kernel - ${_desc}"
