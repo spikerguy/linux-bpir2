@@ -8,6 +8,6 @@ Target = usr/lib/initcpio/*
 [Action]
 Description = Updating uInitrd...
 When = PostTransaction
-Exec = /usr/bin/mkimage -n "uInitrd Image" -A arm64 -O linux -T ramdisk -C none -d /boot/initramfs-linux.img /boot/uInitrd
+Exec = /usr/bin/mkimage -n "uInitrd Image" -A arm -O linux -T ramdisk -C none -d /boot/initramfs-linux.img /boot/uInitrd
 
  
