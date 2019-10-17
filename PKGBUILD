@@ -104,7 +104,7 @@ _package() {
   mkdir -p "${pkgdir}"/{boot/bananapi/bpi-r2/linux/dtbs,usr/lib/modules,lib/firmware}
   make INSTALL_MOD_PATH="${pkgdir}/usr" modules_install
   make INSTALL_DTBS_PATH="${pkgdir}/boot/bananapi/bpi-r2/linux/dtbs" dtbs_install 
-  cp arch/$KARCH/boot/uImage "${pkgdir}/boot"
+  cp arch/$KARCH/boot/uImage "${pkgdir}/boot/bananapi/bpi-r2/linux/"
 
   
    # Move directories
