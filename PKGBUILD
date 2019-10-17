@@ -4,13 +4,13 @@
 
 buildarch=8
 
-pkgbase=linux4-19-69-0-r2
-_commit=11c8a1bd2f229b114fff29ec7839422567651f39
+pkgbase=linux5.4.0-rc1-r2
+_commit=d82866fdb13cb0ff8997ea36b19b8967eb8268c7
 _srcname=BPI-R2-4.14-${_commit}
 _kernelname=${pkgbase#linux}
-_desc="Frank's Mediatek kernel 4.19.69-0 for BPI R2"
-pkgver=4.19.69
-pkgrel=0
+_desc="Frank's Mediatek kernel 5.4.0 rc1 with wifi for BPI R2"
+pkgver=5.4.0
+pkgrel=0.1
 arch=('armv7h')
 url="https://github.com/frank-w/BPI-R2-4.14"
 license=('GPL2')
@@ -19,12 +19,10 @@ options=('!strip')
 source=("https://github.com/frank-w/BPI-R2-4.14/archive/${_commit}.tar.gz"
         'config'
         'linux.preset'
-        'bpi-r2-sd-boot1m.img'
+        'bpi-r2-sd-boot1m-2019.img'
         '60-linux.hook'
-        '90-linux.hook'
-        '91-uInitrd.hook')
+        '90-linux.hook')
 md5sums=('SKIP'
-         'SKIP'
          'SKIP'
          'SKIP'
          'SKIP'
@@ -32,6 +30,11 @@ md5sums=('SKIP'
          'SKIP')
 
 prepare() {
+
+# Extract Kernel
+tar
+
+sed -i s/'EXTRAVERSION = -rc1'/'EXTRAVERSION ='/ "${_srcname}"/Makefile
   cd "${srcdir}/${_srcname}"
 
   cat "${srcdir}/config" > ./.config
@@ -95,11 +98,16 @@ _package() {
   _basekernel=${_kernver%%-*}
   _basekernel=${_basekernel%.*}
 
-  mkdir -p "${pkgdir}"/{boot,usr/lib/modules,lib/firmware}
+  
+  
+  
+  mkdir -p "${pkgdir}"/{boot/bananapi/bpi-r2/linux/dtbs,usr/lib/modules,lib/firmware}
   make INSTALL_MOD_PATH="${pkgdir}/usr" modules_install
-  make INSTALL_DTBS_PATH="${pkgdir}/boot/dtbs" dtbs_install 
+  make INSTALL_DTBS_PATH="${pkgdir}/boot/bananapi/bpi-r2/linux/dtbs" dtbs_install 
   cp arch/$KARCH/boot/uImage "${pkgdir}/boot"
-  #cp arch/$KARCH/boot/dts/amlogic/*.dtb "${pkgdir}/boot/dtb"
+
+  
+   # Move directories
    
   
   # make room for external modules
@@ -123,10 +131,7 @@ _package() {
     s|%EXTRAMODULES%|${_extramodules}|g
   "
   #sed expression for 91-uInird.hook
-  sed "${_subst}" ../91-uInitrd.hook |
-    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/91-uInitrd.hook"
-
-
+  
   # install mkinitcpio preset file
   sed "${_subst}" ../linux.preset |
     install -Dm644 /dev/stdin "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
@@ -144,9 +149,12 @@ _package() {
   find "${pkgdir}" -name '*.ko' |xargs -P 2 -n 1 gzip -9
   
   #Move BootSector image to boot
-   install -Dm755 "${srcdir}/bpi-r2-sd-boot1m.img" "${pkgdir}/boot/bpi-r2-sd-boot1m.img"
+   mv "${srcdir}/bpi-r2-sd-boot1m-2019.img" "${pkgdir}/boot"
+      
+       sed "${_subst}" ../91-uInitrd.hook |
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/91-uInitrd.hook"
 
-}
+   }
 
 _package-headers() {
   pkgdesc="Header files and scripts for building modules for linux kernel - ${_desc}"
@@ -267,4 +275,3 @@ for _p in ${pkgname[@]}; do
     _package${_p#${pkgbase}}
   }"
 done
- 
